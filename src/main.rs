@@ -1,9 +1,11 @@
-mod curve;
-mod curve_manager;
-mod instanced_wall;
-mod shadow_decal;
-mod utils;
-mod wall_constructor;
+// When installing cargo make, make sure to install additional https://github.com/mrk-its/bevy_webgl2_app_template/issues/12
+
+//mod curve;
+//mod curve_manager;
+//mod instanced_wall;
+//mod shadow_decal;
+//mod utils;
+//mod wall_constructor;
 
 use bevy::{
     prelude::*,
@@ -27,13 +29,13 @@ use bevy::render::{
     texture::TextureFormat,
 };
 
-use curve::Curve;
-use curve_manager::{CurveManager, UserDrawnCurve};
-use wall_constructor::WallConstructor;
+//use curve::Curve;
+//use curve_manager::{CurveManager, UserDrawnCurve};
+//use wall_constructor::WallConstructor;
 
 use bevy::{reflect::TypeUuid, render::renderer::RenderResources};
-use instanced_wall::InstancedWall;
-use shadow_decal::ShadowDecal;
+//use instanced_wall::InstancedWall;
+//use shadow_decal::ShadowDecal;
 
 #[derive(RenderResources, Default, TypeUuid)]
 #[uuid = "93fb26fc-6c05-489b-9029-601edf703b6b"]
@@ -52,17 +54,30 @@ struct PreviewCube;
 struct CustomMesh;
 
 fn main() {
-    App::build()
-        .insert_resource(Msaa { samples: 4 })
-        .add_plugins(DefaultPlugins)
+    // When building for WASM, print panics to the browser console
+    #[cfg(target_arch = "wasm32")]
+    console_error_panic_hook::set_once();
+
+    let mut app = App::build();
+
+    app.add_plugins(DefaultPlugins);
+
+    // when building for Web, use WebGL2 rendering
+    #[cfg(target_arch = "wasm32")]
+    app.add_plugin(bevy_webgl2::WebGL2Plugin);
+
+    app.insert_resource(Msaa { samples: 4 })
+        .add_plugins_with(DefaultPlugins, |group| {
+            group.disable::<bevy::log::LogPlugin>()
+        })
         .add_plugin(PickingPlugin)
-        .insert_resource(CurveManager::new())
+        //.insert_resource(CurveManager::new())
         .add_startup_system(setup.system())
         .add_system(update_camera.system())
         //.add_system(handle_mouse_clicks.system())
         .add_system(mouse_preview.system())
-        .add_system(update_curve_manager.system().label("curve manager"))
-        .add_system(update_wall_2.system().after("curve manager").label("wall"))
+        //.add_system(update_curve_manager.system().label("curve manager"))
+        //.add_system(update_wall_2.system().after("curve manager").label("wall"))
         //.add_system(animate_shader.system()) //.after("wall"))
         .run();
 }
@@ -77,7 +92,7 @@ fn animate_shader(time: Res<Time>, mut query: Query<&mut TimeUniform>) {
     }
 }
 */
-
+/*
 fn update_wall_2(
     mut commands: Commands,
     mut curve_manager: ResMut<CurveManager>,
@@ -123,17 +138,18 @@ fn update_wall_2(
         }
     }
 }
-
+*/
 /// set up a simple 3D scene
 fn setup(
     mut commands: Commands,
-    mut curve_manager: ResMut<CurveManager>,
+    //mut curve_manager: ResMut<CurveManager>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut pipelines: ResMut<Assets<PipelineDescriptor>>,
-    asset_server: Res<AssetServer>,
+    //asset_server: Res<AssetServer>,
     mut render_graph: ResMut<RenderGraph>,
 ) {
+    /*
     // Watch for changes
     asset_server.watch_for_changes().unwrap();
 
@@ -221,16 +237,18 @@ fn setup(
     render_graph
         .add_node_edge("time_uniform", base::node::MAIN_PASS)
         .unwrap();
+        */
 
     // floor
     let floor_bundle = PbrBundle {
-        mesh: meshes.add(utils::load_gltf_as_bevy_mesh_w_vertex_color(
-            "assets/meshes/floor.glb",
-        )),
+        mesh: meshes.add(Mesh::from(shape::Plane { size: 5.0 })),
+        //mesh: meshes.add(utils::load_gltf_as_bevy_mesh_w_vertex_color(
+        //    "assets/meshes/floor.glb",
+        //)),
         material: materials.add(Color::WHITE.into()),
-        render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
-            pipeline_handle,
-        )]),
+        //render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
+        //    pipeline_handle,
+        //)]),
         ..Default::default()
     };
     commands
@@ -309,6 +327,7 @@ fn mouse_preview(
     }
 }
 
+/*
 fn update_curve_manager(
     materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands,
@@ -358,6 +377,7 @@ fn update_curve_manager(
         }
     }
 }
+*/
 
 fn update_camera(
     keys: Res<Input<KeyCode>>,

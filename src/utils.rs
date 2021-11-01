@@ -124,6 +124,7 @@ pub struct MeshBuffer {
     pub tex_coord: Vec<[f32; 2]>,
 }
 
+/*
 pub fn load_gltf_as_mesh_buffer(path: &str) -> MeshBuffer {
     let mut out = MeshBuffer {
         indices: Vec::new(),
@@ -221,3 +222,4 @@ pub fn load_gltf_as_bevy_mesh_w_vertex_color(path: &str) -> Mesh {
     }
     bevy_mesh
 }
+*/
