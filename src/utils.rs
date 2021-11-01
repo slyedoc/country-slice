@@ -29,7 +29,7 @@ pub fn bevy_mesh_from_trimesh(
     // MAKE SURE THE ATTRIBUTES ARE THE SAME WHEN DEBUG MESH IS INIT IN `UserDrawnCurve`
     bevy_mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     bevy_mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, normals); //vec![[1.0, 0.0, 0.0]; vert_count]);
-    bevy_mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uvs.clone());
+    bevy_mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
     bevy_mesh.set_attribute("Vertex_Curve_Length", vec![curve_length; vert_count]);
     bevy_mesh.set_indices(Some(bevy::render::mesh::Indices::U32(indices)));
 }
@@ -97,8 +97,8 @@ pub fn curve_to_trimesh(points: &[Vec3]) -> (tri_mesh::mesh::Mesh, Vec<[f32; 2]>
     (mesh, uvs, temp_curve.length)
 }
 
-pub fn smooth_points(points: &Vec<Vec3>, smoothing_steps: usize) -> Vec<Vec3> {
-    let mut total_smoothed = points.clone();
+pub fn smooth_points(points: &[Vec3], smoothing_steps: usize) -> Vec<Vec3> {
+    let mut total_smoothed = points.to_owned();
     for _ in 0..smoothing_steps {
         let mut current_iter_smooth = total_smoothed.clone();
         for (i, current_pos) in total_smoothed.iter().enumerate() {
@@ -179,35 +179,35 @@ pub fn load_gltf_as_bevy_mesh_w_vertex_color(path: &str) -> Mesh {
 
             if let Some(vertex_attribute) = reader
                 .read_colors(0)
-                .map(|v| VertexAttributeValues::Float4(v.into_rgba_f32().collect()))
+                .map(|v| VertexAttributeValues::Float32x4(v.into_rgba_f32().collect()))
             {
                 bevy_mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, vertex_attribute);
             }
 
             if let Some(vertex_attribute) = reader
                 .read_positions()
-                .map(|v| VertexAttributeValues::Float3(v.collect()))
+                .map(|v| VertexAttributeValues::Float32x3(v.collect()))
             {
                 bevy_mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, vertex_attribute);
             }
 
             if let Some(vertex_attribute) = reader
                 .read_normals()
-                .map(|v| VertexAttributeValues::Float3(v.collect()))
+                .map(|v| VertexAttributeValues::Float32x3(v.collect()))
             {
                 bevy_mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, vertex_attribute);
             }
 
             if let Some(vertex_attribute) = reader
                 .read_tangents()
-                .map(|v| VertexAttributeValues::Float4(v.collect()))
+                .map(|v| VertexAttributeValues::Float32x4(v.collect()))
             {
                 bevy_mesh.set_attribute(Mesh::ATTRIBUTE_TANGENT, vertex_attribute);
             }
 
             if let Some(vertex_attribute) = reader
                 .read_tex_coords(0)
-                .map(|v| VertexAttributeValues::Float2(v.into_f32().collect()))
+                .map(|v| VertexAttributeValues::Float32x2(v.into_f32().collect()))
             {
                 bevy_mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, vertex_attribute);
             }

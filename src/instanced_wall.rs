@@ -84,7 +84,7 @@ impl InstancedWall {
                         .clone()
                         .iter()
                         .map(|p| {
-                            let v = from_os_to_ws.transform_point3(Vec3::from_slice_unaligned(p));
+                            let v = from_os_to_ws.transform_point3(Vec3::from_slice(p));
                             [v.x, v.y, v.z]
                         })
                         .collect::<Vec<_>>(),
@@ -99,7 +99,7 @@ impl InstancedWall {
                         .clone()
                         .iter()
                         .map(|n| {
-                            let v = brick.rotation.mul_vec3(Vec3::from_slice_unaligned(n));
+                            let v = brick.rotation.mul_vec3(Vec3::from_slice(n));
                             [v.x, v.y, v.z]
                         })
                         .collect::<Vec<_>>(),
@@ -124,7 +124,7 @@ impl InstancedWall {
                         .positions
                         .iter()
                         .map(|p| {
-                            let bbx_pos = Vec3::from_slice_unaligned(p) + Vec3::splat(0.5);
+                            let bbx_pos = Vec3::from_slice(p) + Vec3::splat(0.5);
                             let curve_uv_pos =
                                 brick.pivot_uv + Vec2::new(bbx_pos.x, bbx_pos.y) * brick.bounds_uv;
                             [curve_uv_pos.x, curve_uv_pos.y]
@@ -140,7 +140,7 @@ impl InstancedWall {
                         .map(|p| {
                             // if it's a bottom of the brick, the bottom should have ID = row ID
                             // if its a top of the brick, it should have same offset as the bottom fo the row ID + 1
-                            let bbx_pos = Vec3::from_slice_unaligned(p) + Vec3::splat(0.5);
+                            let bbx_pos = Vec3::from_slice(p) + Vec3::splat(0.5);
                             if bbx_pos.y < 0.5 {
                                 brick.row_id_bottom as f32 / (brick.row_count as f32)
                             } else {

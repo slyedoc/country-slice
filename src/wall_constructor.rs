@@ -52,10 +52,8 @@ impl WallConstructor {
             for (j, this_u) in brick_widths.iter().enumerate() {
                 if let Some(next_u) = brick_widths.get(j+1) {
                     // if its the last row, randomly skip some bricks!
-                    if i == rows.len()-1 {
-                        if rng.f32() < 0.35 {
-                            continue;
-                        }
+                    if i == rows.len()-1 && rng.f32() < 0.35 {
+                        continue;
                     }
 
                     let brick_depth = BRICK_DEPTH + (rng.f32()-0.5) * BRICK_DEPTH_VARIANCE;
@@ -70,13 +68,13 @@ impl WallConstructor {
                         let pivot_v_2 = (row_u + brick_height / WALL_HEIGHT) - height_u_2 / 2.0;
                         let width_u = next_u - this_u;
                         let width_ws = width_u * wall_length;
-                        for (height, pivot_v, idx) in vec![(height_u_1, pivot_v_1, i*2), (height_u_2, pivot_v_2, i*2+1)] {
+                        for (height, pivot_v, idx) in &[(height_u_1, pivot_v_1, i*2), (height_u_2, pivot_v_2, i*2+1)] {
                             brick_row.push(Brick {
                                 row_count: row_count * 2, // HACK: multiple it by two, to account for random splits that create in-between rows
-                                row_id_bottom: idx,
+                                row_id_bottom: *idx,
                                 row_id_top: idx+1,
-                                pivot_uv: Vec2::new(pivot_u, pivot_v),
-                                bounds_uv: Vec2::new(width_u, height),
+                                pivot_uv: Vec2::new(pivot_u, *pivot_v),
+                                bounds_uv: Vec2::new(width_u, *height),
                                 scale: Vec3::new(width_ws, height * WALL_HEIGHT, brick_depth),
                                 position: Vec3::new(pivot_u*wall_length, 0.0, 0.0),
                                 rotation: Quat::IDENTITY
@@ -91,7 +89,7 @@ impl WallConstructor {
                             row_id_bottom: i*2,
                             row_id_top: i*2 + 2,
                             pivot_uv: Vec2::new(pivot_u, row_u + brick_height / WALL_HEIGHT / 2.0),
-                            bounds_uv: Vec2::new(width_u, brick_height / WALL_HEIGHT), 
+                            bounds_uv: Vec2::new(width_u, brick_height / WALL_HEIGHT),
                             scale: Vec3::new(width_ws, brick_height, brick_depth),
                             position: Vec3::new(pivot_u*wall_length, 0.0, 0.0),
                             rotation: Quat::IDENTITY
@@ -107,7 +105,7 @@ impl WallConstructor {
 
                 let curve_tangent = curve.get_tangent_at_u(brick.pivot_uv.x);
                 let normal = curve_tangent.cross(Vec3::Y);
-                brick.rotation = Quat::from_rotation_mat3(&Mat3::from_cols(curve_tangent, Vec3::Y, normal));
+                brick.rotation = Quat::from_mat3(&Mat3::from_cols(curve_tangent, Vec3::Y, normal));
             }
 
             bricks.extend(brick_row);

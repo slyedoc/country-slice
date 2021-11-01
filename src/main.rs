@@ -17,12 +17,14 @@ use bevy::{
         shader::ShaderStages,
     },
 };
-use bevy_dolly::Transform2Bevy;
+
+use bevy_dolly::prelude::*;
 use bevy_mod_picking::{PickableBundle, PickingCamera, PickingCameraBundle, PickingPlugin};
-use dolly::prelude::{Arm, CameraRig, Smooth, YawPitch};
 
 use bevy::render::{
-    pipeline::{BlendFactor, BlendOperation, BlendState, ColorTargetState, ColorWrite},
+    pipeline::{
+        BlendComponent, BlendFactor, BlendOperation, BlendState, ColorTargetState, ColorWrite,
+    },
     shader::Shader,
     texture::TextureFormat,
 };
@@ -35,7 +37,7 @@ use bevy::{reflect::TypeUuid, render::renderer::RenderResources};
 use instanced_wall::InstancedWall;
 use shadow_decal::ShadowDecal;
 
-#[derive(RenderResources, Default, TypeUuid)]
+#[derive(RenderResources, Default, TypeUuid, Component)]
 #[uuid = "93fb26fc-6c05-489b-9029-601edf703b6b"]
 pub struct TimeUniform {
     pub value: f32,
@@ -44,25 +46,29 @@ pub struct TimeUniform {
 const CURVE_SHOW_DEBUG: bool = false;
 
 // Give camera a component so we can find it and update with Dolly rig
+
+#[derive(Component)]
 struct MainCamera;
 
 // Mark the cube that is the preview of mouse raycast intersection
+#[derive(Component)]
 struct PreviewCube;
 
+#[derive(Component)]
 struct CustomMesh;
 
 fn main() {
-    App::build()
+    App::new()
         .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
+        .add_plugin(DollyPlugin)
         .add_plugin(PickingPlugin)
         .insert_resource(CurveManager::new())
-        .add_startup_system(setup.system())
-        .add_system(update_camera.system())
+        .add_startup_system(setup)
+        .add_system(mouse_preview)
+        .add_system(update_curve_manager.label("curve manager"))
+        .add_system(update_wall_2.after("curve manager").label("wall"))
         //.add_system(handle_mouse_clicks.system())
-        .add_system(mouse_preview.system())
-        .add_system(update_curve_manager.system().label("curve manager"))
-        .add_system(update_wall_2.system().after("curve manager").label("wall"))
         //.add_system(animate_shader.system()) //.after("wall"))
         .run();
 }
@@ -168,20 +174,22 @@ fn setup(
                 slope_scale: 0.0,
                 clamp: 0.0,
             },
-            clamp_depth: false,
+            //clamp_depth: false,
         }),
         color_target_states: vec![ColorTargetState {
             format: TextureFormat::default(),
-            color_blend: BlendState {
-                src_factor: BlendFactor::SrcAlpha,
-                dst_factor: BlendFactor::OneMinusSrcAlpha,
-                operation: BlendOperation::Add,
-            },
-            alpha_blend: BlendState {
-                src_factor: BlendFactor::One,
-                dst_factor: BlendFactor::One,
-                operation: BlendOperation::Add,
-            },
+            blend: Some(BlendState {
+                alpha: BlendComponent {
+                    src_factor: BlendFactor::One,
+                    dst_factor: BlendFactor::One,
+                    operation: BlendOperation::Add,
+                },
+                color: BlendComponent {
+                    src_factor: BlendFactor::SrcAlpha,
+                    dst_factor: BlendFactor::OneMinusSrcAlpha,
+                    operation: BlendOperation::Add,
+                },
+            }),
             write_mask: ColorWrite::ALL,
         }],
         ..PipelineDescriptor::new(ShaderStages {
@@ -223,61 +231,46 @@ fn setup(
         .unwrap();
 
     // floor
-    let floor_bundle = PbrBundle {
-        mesh: meshes.add(utils::load_gltf_as_bevy_mesh_w_vertex_color(
-            "assets/meshes/floor.glb",
-        )),
-        material: materials.add(Color::WHITE.into()),
-        render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
-            pipeline_handle,
-        )]),
-        ..Default::default()
-    };
     commands
-        .spawn_bundle(floor_bundle)
+        .spawn_bundle(PbrBundle {
+            mesh: meshes.add(utils::load_gltf_as_bevy_mesh_w_vertex_color(
+                "assets/meshes/floor.glb",
+            )),
+            material: materials.add(Color::WHITE.into()),
+            render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
+                pipeline_handle,
+            )]),
+            ..Default::default()
+        })
         .insert_bundle(PickableBundle::default());
 
     // preview cube
-    commands
-        .spawn_bundle(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.1 })),
-            material: materials.add(StandardMaterial {
-                base_color: Color::rgb(1.0, 1.0, 1.0),
-                base_color_texture: None,
-                roughness: 1.0,
-                metallic: 0.0,
-                metallic_roughness_texture: None,
-                reflectance: 0.0,
-                normal_map: None,
-                double_sided: true,
-                occlusion_texture: None,
-                emissive: Color::rgb(1.0, 1.0, 1.0),
-                emissive_texture: None,
-                unlit: false,
-            }),
-            transform: Transform::from_xyz(0.0, 0.5, 0.0),
+    commands.spawn_bundle(PbrBundle {
+        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+        material: materials.add(StandardMaterial {
             ..Default::default()
-        })
-        .insert(PreviewCube);
+        }),
+        transform: Transform::from_xyz(0.0, 0.5, 0.0),
+        ..Default::default()
+    });
 
     // light
-    commands.spawn_bundle(LightBundle {
+    commands.spawn_bundle(PointLightBundle {
+        point_light: PointLight {
+            color: Color::rgb(1.0, 1.0, 1.0),
+            intensity: 200.0,
+            range: 20.0,
+            radius: 0.0,
+        },
         transform: Transform::from_xyz(4.0, 8.0, 4.0),
         ..Default::default()
     });
     // camera
     // TODO: can replace this with a resource and update camera
-    commands.spawn().insert(
-        CameraRig::builder()
-            .with(YawPitch::new().yaw_degrees(45.0).pitch_degrees(-35.0))
-            .with(Smooth::new_rotation(1.5))
-            .with(Arm::new(dolly::glam::Vec3::Z * 9.0))
-            .build(),
-    );
     commands
-        .spawn_bundle(PerspectiveCameraBundle {
-            transform: Transform::from_xyz(-2.0, 10.0, 5.0)
-                .looking_at(bevy::math::Vec3::ZERO, bevy::math::Vec3::Y),
+        .spawn_bundle(DollyControlCameraBundle {
+            rig: Rig::default(),
+            transform: Transform::from_xyz(-2.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..Default::default()
         })
         .insert(MainCamera)
@@ -295,10 +288,7 @@ fn handle_mouse_clicks(mouse_input: Res<Input<MouseButton>>, windows: Res<Window
 
 fn mouse_preview(
     mut query: Query<&mut PickingCamera>,
-    mut cube_query: Query<(
-        &mut PreviewCube,
-        &mut bevy::transform::components::Transform,
-    )>,
+    mut cube_query: Query<(&mut PreviewCube, &mut Transform)>,
 ) {
     for camera in query.iter_mut() {
         if let Some((_, intersection)) = camera.intersect_top() {
@@ -334,9 +324,8 @@ fn update_curve_manager(
     if let Some(curve) = curve_manager.user_curves.last_mut() {
         // Add points to it
         if mouse_button_input.pressed(MouseButton::Left) {
-            if let Ok(Some((_, intersection))) =
-                query.single_mut().map(|camera| camera.intersect_top())
-            {
+            let camera = query.single_mut();
+            if let Some((_, intersection)) = camera.intersect_top() {
                 const DIST_THRESHOLD: f32 = 0.001;
 
                 if curve
@@ -357,35 +346,4 @@ fn update_curve_manager(
             curve.update_debug_mesh(meshes, materials, commands);
         }
     }
-}
-
-fn update_camera(
-    keys: Res<Input<KeyCode>>,
-    time: Res<Time>,
-    mut query: QuerySet<(
-        Query<(&mut Transform, With<MainCamera>)>,
-        Query<&mut CameraRig>,
-    )>,
-) {
-    let mut rig = query.q1_mut().single_mut().unwrap();
-    let camera_driver = rig.driver_mut::<YawPitch>();
-
-    if keys.pressed(KeyCode::Left) {
-        camera_driver.rotate_yaw_pitch(-2.0, 0.0);
-    }
-    if keys.pressed(KeyCode::Right) {
-        camera_driver.rotate_yaw_pitch(2.0, 0.0);
-    }
-
-    if keys.pressed(KeyCode::Up) {
-        camera_driver.rotate_yaw_pitch(0.0, -1.0);
-    }
-    if keys.pressed(KeyCode::Down) {
-        camera_driver.rotate_yaw_pitch(0.0, 1.0);
-    }
-
-    let transform = rig.update(time.delta_seconds());
-    let (mut cam, _) = query.q0_mut().single_mut().unwrap();
-
-    cam.transform_2_bevy(transform);
 }

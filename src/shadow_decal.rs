@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use crate::curve::Curve;
 use bevy::{
     prelude::*,
@@ -166,7 +168,7 @@ fn add_a_cap(
     let cap_pos: Vec<[f32; 3]> = (0..SHADOW_CAP_STEPS)
         .map(|s| {
             let t = (s as f32) / (SHADOW_CAP_STEPS as f32 - 1.0);
-            let rot = Quat::from_rotation_y(-3.14 * t);
+            let rot = Quat::from_rotation_y(PI * t);
             let p = position + rot.mul_vec3(offset_dir);
             [p[0], p[1], p[2]]
         })
